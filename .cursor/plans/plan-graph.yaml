@@ -1,0 +1,179 @@
+# plan-graph.yaml
+# Maintained by the planning orchestrator. Do not edit manually unless fixing consistency errors.
+# Each node represents a .plan.md file. Edges are parent -> child relationships.
+
+nodes:
+  - planId: tldr-research-ops
+    title: "TLDR Research Ops — Root Plan"
+    file: .cursor/plans/tldr-research-ops.plan.md
+    parentPlanId: null
+    childPlanIds:
+      - adr-finalization
+      - infra-bootstrap
+      - pipeline-ingestion
+      - pipeline-triage
+      - pipeline-evidence
+      - pipeline-learning
+      - pipeline-implementation
+      - pipeline-codegen
+      - ops-evaluation
+    scope: "Root orchestration plan; indexes all workstream child plans."
+    status: active
+
+  - planId: adr-finalization
+    title: "ADR Finalization — Bootstrap Meta-Plan"
+    file: .cursor/plans/adr-finalization.plan.md
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "Sequences finalization of all 10 ADRs before the planning orchestrator is run. Must complete before workstream planning begins."
+    status: complete
+
+  - planId: infra-bootstrap
+    title: "Infrastructure Bootstrap — Project Scaffolding + Core Infra Modules"
+    file: .cursor/plans/infra-bootstrap.plan.md
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "Python package scaffolding, Pydantic schemas for all artifacts, RunConfig, auth/secrets, storage layer, CI workflow, repo-registry placeholder."
+    status: active
+    dependencies:
+      - adr-finalization
+
+  - planId: pipeline-ingestion
+    title: "Pipeline: Ingestion — Newsletter Ingestion + Candidate Extraction"
+    file: .cursor/plans/pipeline-ingestion.plan.md
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "FR1 + FR2: file-drop ingestion, deduplication, LLM candidate extraction → HeadlineCandidate artifacts."
+    status: active
+    dependencies:
+      - infra-bootstrap
+
+  - planId: pipeline-triage
+    title: "Pipeline: Triage — Opportunity Scoring + RepoRegistry Loading"
+    file: .cursor/plans/pipeline-triage.plan.md
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "FR3 + FR6 (registry loading): weighted additive scoring, depth assignment, top-N ranking → OpportunityScore artifacts."
+    status: active
+    dependencies:
+      - pipeline-ingestion
+
+  - planId: pipeline-evidence
+    title: "Pipeline: Evidence — Source Discovery + EvidencePack Generation"
+    file: .cursor/plans/pipeline-evidence.plan.md
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "FR4: source URL discovery, fetch, claim extraction, contradiction detection, unknowns → EvidencePack artifacts (evidence gate enforced)."
+    status: active
+    dependencies:
+      - pipeline-triage
+
+  - planId: pipeline-learning
+    title: "Pipeline: Learning — LearningPlan + LearningDigest Generation"
+    file: .cursor/plans/pipeline-learning.plan.md
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "FR5: depth-calibrated LearningPlan + LearningDigest per EvidencePack → LearningPlan, LearningDigest artifacts."
+    status: active
+    dependencies:
+      - pipeline-evidence
+
+  - planId: pipeline-implementation
+    title: "Pipeline: Implementation — RepoFitAssessment + ImplementationPlan Generation"
+    file: .cursor/plans/pipeline-implementation.plan.md
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "FR6 + FR7: allowlist enforcement, repo-fit scoring, ImplementationPlan generation (dual-plan model enforced) → RepoFitAssessment, ImplementationPlan artifacts."
+    status: active
+    dependencies:
+      - pipeline-learning
+      - pipeline-triage
+
+  - planId: pipeline-codegen
+    title: "Pipeline: Codegen Safety Gates + CodexExecutionBrief"
+    file: .cursor/plans/pipeline-codegen.plan.md
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "FR8: two-gate safety check, CodexExecutionBrief generation, GitHub branch/PR operations (default read-only; gated)."
+    status: active
+    dependencies:
+      - pipeline-implementation
+
+  - planId: ops-evaluation
+    title: "Ops: Evaluation + Feedback Loop"
+    file: .cursor/plans/ops-evaluation.plan.md
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "ADR-0008: post-run feedback prompt, metrics aggregation (M1–M5), regression test harness, RunManifest finalization."
+    status: active
+    dependencies:
+      - infra-bootstrap
+
+edges:
+  - from: tldr-research-ops
+    to: adr-finalization
+    type: parent-child
+
+  - from: tldr-research-ops
+    to: infra-bootstrap
+    type: parent-child
+
+  - from: tldr-research-ops
+    to: pipeline-ingestion
+    type: parent-child
+
+  - from: tldr-research-ops
+    to: pipeline-triage
+    type: parent-child
+
+  - from: tldr-research-ops
+    to: pipeline-evidence
+    type: parent-child
+
+  - from: tldr-research-ops
+    to: pipeline-learning
+    type: parent-child
+
+  - from: tldr-research-ops
+    to: pipeline-implementation
+    type: parent-child
+
+  - from: tldr-research-ops
+    to: pipeline-codegen
+    type: parent-child
+
+  - from: tldr-research-ops
+    to: ops-evaluation
+    type: parent-child
+
+  - from: infra-bootstrap
+    to: pipeline-ingestion
+    type: dependency
+
+  - from: pipeline-ingestion
+    to: pipeline-triage
+    type: dependency
+
+  - from: pipeline-triage
+    to: pipeline-evidence
+    type: dependency
+
+  - from: pipeline-evidence
+    to: pipeline-learning
+    type: dependency
+
+  - from: pipeline-learning
+    to: pipeline-implementation
+    type: dependency
+
+  - from: pipeline-triage
+    to: pipeline-implementation
+    type: dependency
+
+  - from: pipeline-implementation
+    to: pipeline-codegen
+    type: dependency
+
+  - from: infra-bootstrap
+    to: ops-evaluation
+    type: dependency

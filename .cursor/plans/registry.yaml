@@ -1,0 +1,162 @@
+# registry.yaml
+# Maintained by the planning orchestrator. Do not edit manually unless fixing consistency errors.
+# Registry of all plan files in .cursor/plans/.
+
+plans:
+  - planId: tldr-research-ops
+    file: .cursor/plans/tldr-research-ops.plan.md
+    title: "TLDR Research Ops — Root Plan"
+    parentPlanId: null
+    childPlanIds:
+      - adr-finalization
+      - infra-bootstrap
+      - pipeline-ingestion
+      - pipeline-triage
+      - pipeline-evidence
+      - pipeline-learning
+      - pipeline-implementation
+      - pipeline-codegen
+      - ops-evaluation
+    scope: "Root orchestration plan; indexes all workstream child plans."
+    prd: docs/prd/tldr-research-ops.prd.md
+    adrs:
+      - docs/adr/ADR-0001-execution-scheduling.md
+      - docs/adr/ADR-0002-artifact-pipeline-schemas.md
+      - docs/adr/ADR-0003-auth-secrets-least-privilege.md
+      - docs/adr/ADR-0004-newsletter-ingestion.md
+      - docs/adr/ADR-0005-artifact-storage.md
+      - docs/adr/ADR-0006-safety-gates-codegen.md
+      - docs/adr/ADR-0007-repo-registry.md
+      - docs/adr/ADR-0008-evaluation-feedback.md
+      - docs/adr/ADR-0009-cost-time-controls.md
+      - docs/adr/ADR-0010-triage-scoring.md
+    status: active
+
+  - planId: adr-finalization
+    file: .cursor/plans/adr-finalization.plan.md
+    title: "ADR Finalization — Bootstrap Meta-Plan"
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "Sequences finalization of all 10 ADRs before the planning orchestrator is run. Must complete before workstream planning begins."
+    prd: docs/prd/tldr-research-ops.prd.md
+    adrs:
+      - docs/adr/ADR-0001-execution-scheduling.md
+      - docs/adr/ADR-0002-artifact-pipeline-schemas.md
+      - docs/adr/ADR-0003-auth-secrets-least-privilege.md
+      - docs/adr/ADR-0004-newsletter-ingestion.md
+      - docs/adr/ADR-0005-artifact-storage.md
+      - docs/adr/ADR-0006-safety-gates-codegen.md
+      - docs/adr/ADR-0007-repo-registry.md
+      - docs/adr/ADR-0008-evaluation-feedback.md
+      - docs/adr/ADR-0009-cost-time-controls.md
+      - docs/adr/ADR-0010-triage-scoring.md
+    status: complete
+
+  - planId: infra-bootstrap
+    file: .cursor/plans/infra-bootstrap.plan.md
+    title: "Infrastructure Bootstrap — Project Scaffolding + Core Infra Modules"
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "Python package scaffolding, Pydantic schemas for all artifacts, RunConfig, auth/secrets, storage layer, CI workflow, repo-registry placeholder."
+    prd: docs/prd/tldr-research-ops.prd.md
+    adrs:
+      - docs/adr/ADR-0001-execution-scheduling.md
+      - docs/adr/ADR-0002-artifact-pipeline-schemas.md
+      - docs/adr/ADR-0003-auth-secrets-least-privilege.md
+      - docs/adr/ADR-0005-artifact-storage.md
+      - docs/adr/ADR-0007-repo-registry.md
+      - docs/adr/ADR-0009-cost-time-controls.md
+    status: active
+
+  - planId: pipeline-ingestion
+    file: .cursor/plans/pipeline-ingestion.plan.md
+    title: "Pipeline: Ingestion — Newsletter Ingestion + Candidate Extraction"
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "FR1 + FR2: file-drop ingestion, deduplication, LLM candidate extraction → HeadlineCandidate artifacts."
+    prd: docs/prd/tldr-research-ops.prd.md
+    adrs:
+      - docs/adr/ADR-0002-artifact-pipeline-schemas.md
+      - docs/adr/ADR-0004-newsletter-ingestion.md
+      - docs/adr/ADR-0009-cost-time-controls.md
+    status: active
+
+  - planId: pipeline-triage
+    file: .cursor/plans/pipeline-triage.plan.md
+    title: "Pipeline: Triage — Opportunity Scoring + RepoRegistry Loading"
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "FR3 + FR6 (registry loading): weighted additive scoring, depth assignment, top-N ranking → OpportunityScore artifacts."
+    prd: docs/prd/tldr-research-ops.prd.md
+    adrs:
+      - docs/adr/ADR-0002-artifact-pipeline-schemas.md
+      - docs/adr/ADR-0007-repo-registry.md
+      - docs/adr/ADR-0009-cost-time-controls.md
+      - docs/adr/ADR-0010-triage-scoring.md
+    status: active
+
+  - planId: pipeline-evidence
+    file: .cursor/plans/pipeline-evidence.plan.md
+    title: "Pipeline: Evidence — Source Discovery + EvidencePack Generation"
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "FR4: source URL discovery, fetch, claim extraction, contradiction detection, unknowns → EvidencePack artifacts."
+    prd: docs/prd/tldr-research-ops.prd.md
+    adrs:
+      - docs/adr/ADR-0002-artifact-pipeline-schemas.md
+      - docs/adr/ADR-0009-cost-time-controls.md
+    status: active
+
+  - planId: pipeline-learning
+    file: .cursor/plans/pipeline-learning.plan.md
+    title: "Pipeline: Learning — LearningPlan + LearningDigest Generation"
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "FR5: depth-calibrated LearningPlan + LearningDigest per EvidencePack."
+    prd: docs/prd/tldr-research-ops.prd.md
+    adrs:
+      - docs/adr/ADR-0002-artifact-pipeline-schemas.md
+      - docs/adr/ADR-0009-cost-time-controls.md
+      - docs/adr/ADR-0010-triage-scoring.md
+    status: active
+
+  - planId: pipeline-implementation
+    file: .cursor/plans/pipeline-implementation.plan.md
+    title: "Pipeline: Implementation — RepoFitAssessment + ImplementationPlan Generation"
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "FR6 + FR7: allowlist enforcement, repo-fit scoring, ImplementationPlan (dual-plan model enforced)."
+    prd: docs/prd/tldr-research-ops.prd.md
+    adrs:
+      - docs/adr/ADR-0002-artifact-pipeline-schemas.md
+      - docs/adr/ADR-0007-repo-registry.md
+      - docs/adr/ADR-0009-cost-time-controls.md
+    status: active
+
+  - planId: pipeline-codegen
+    file: .cursor/plans/pipeline-codegen.plan.md
+    title: "Pipeline: Codegen Safety Gates + CodexExecutionBrief"
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "FR8: two-gate safety check, CodexExecutionBrief, GitHub branch/PR (default disabled)."
+    prd: docs/prd/tldr-research-ops.prd.md
+    adrs:
+      - docs/adr/ADR-0002-artifact-pipeline-schemas.md
+      - docs/adr/ADR-0003-auth-secrets-least-privilege.md
+      - docs/adr/ADR-0006-safety-gates-codegen.md
+      - docs/adr/ADR-0007-repo-registry.md
+      - docs/adr/ADR-0009-cost-time-controls.md
+    status: active
+
+  - planId: ops-evaluation
+    file: .cursor/plans/ops-evaluation.plan.md
+    title: "Ops: Evaluation + Feedback Loop"
+    parentPlanId: tldr-research-ops
+    childPlanIds: []
+    scope: "ADR-0008: post-run feedback prompt, metrics (M1–M5), regression test harness, RunManifest finalization."
+    prd: docs/prd/tldr-research-ops.prd.md
+    adrs:
+      - docs/adr/ADR-0005-artifact-storage.md
+      - docs/adr/ADR-0008-evaluation-feedback.md
+      - docs/adr/ADR-0010-triage-scoring.md
+    status: active
