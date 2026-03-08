@@ -4,9 +4,20 @@ A Cursor Automation that runs daily, scans TLDR Tech for high-leverage ideas mat
 
 ## Setup options
 
-Cursor does not expose an API to create automations (UI only). Two ways to run this:
+Cursor does not expose an API to create automations (UI only). Three ways to run this:
 
-### Option A: GitHub Actions + Cloud Agents API (recommended)
+### Option A: Playwright UI automation (recommended for first-time setup)
+
+Uses Playwright to fill the automation form at cursor.com/automations/new.
+
+```bash
+cd .cursor/automations/tldr-reader-ultra-lean/playwright
+npm install && npm run setup
+```
+
+First run: log in when prompted, then the script fills name, prompt, cron, tools. Review and click Create. See `playwright/README.md` for details.
+
+### Option B: GitHub Actions + Cloud Agents API
 
 Uses the Cursor Cloud Agents API to launch the agent on a schedule. No manual UI setup.
 
@@ -17,9 +28,9 @@ Uses the Cursor Cloud Agents API to launch the agent on a schedule. No manual UI
 3. **Schedule:** Workflow runs at 7:00 AM UTC daily (`.github/workflows/tldr-reader-daily.yml`). To match local time, adjust the cron (e.g. 7 AM EST = `0 12 * * *`).
 4. **Manual run:** Actions tab → TLDR Reader Daily → Run workflow
 
-**Note:** API-launched agents run in Cursor's cloud with repo access. Tool availability (web fetch, Slack, etc.) may differ from UI-configured automations. If the agent cannot fetch tldr.tech, use Option B.
+**Note:** API-launched agents run in Cursor's cloud with repo access. Tool availability (web fetch, Slack, etc.) may differ from UI-configured automations. If the agent cannot fetch tldr.tech, use Option A or C.
 
-### Option B: Cursor Automations UI
+### Option C: Cursor Automations UI (manual)
 
 1. **Create** at [cursor.com/automations/new](https://cursor.com/automations/new)
 2. **Name:** TLDR Reader - Ultra-Lean Digest

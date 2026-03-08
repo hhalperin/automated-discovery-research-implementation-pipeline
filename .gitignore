@@ -1,3 +1,4 @@
 .env
 .cursor/plan-logs/
+.cursor/automations/**/playwright/.auth-state.json
 scripts
