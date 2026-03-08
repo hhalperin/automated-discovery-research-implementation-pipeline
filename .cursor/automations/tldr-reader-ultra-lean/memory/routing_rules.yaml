@@ -1,0 +1,13 @@
+# TLDR Reader — routing_rules
+# Map idea themes to repos. Bootstrap: align with your codebase_registry.
+
+rules:
+  - pattern: orchestration | agents | evals | newsletter | triage | pipeline
+    target_repo: tldr-research-ops
+    priority: primary
+  - pattern: infra automation | CI | deployment
+    target_repo: tldr-research-ops
+    priority: secondary
+  - pattern: browser | frontend | UI
+    target_repo: deprioritize
+    priority: deprioritize

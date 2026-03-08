@@ -1,0 +1,13 @@
+# TLDR Reader — codebase_registry
+# Bootstrap: add your repos. Schema: .cursor/automations/tldr-reader-ultra-lean/memory/*.schema.json
+
+repos:
+  - repo_name: tldr-research-ops
+    purpose: AI pipeline for newsletter triage, evidence, learning plans, implementation plans
+    stack: [Python, Pydantic]
+    maturity: alpha
+    domains: [orchestration, evaluation, agents]
+    integration_targets: [src/tldr_ops/, config/, docs/]
+    exclusions: [consumer UI, crypto]
+    best_issue_style: feature | spike | evaluation
+    last_updated: "2026-03-08"

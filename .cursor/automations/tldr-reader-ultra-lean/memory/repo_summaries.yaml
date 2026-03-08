@@ -1,0 +1,10 @@
+# TLDR Reader — repo_summaries
+# ~200 tokens max per repo. Bootstrap: populate from codebase_registry.
+
+summaries:
+  tldr-research-ops:
+    summary: "Python pipeline ingests TLDR newsletter, extracts candidates, scores opportunities, fetches evidence, generates LearningPlan + ImplementationPlan. Schema-validated artifacts. RepoRegistry allowlist. Gated codegen. P1 MVP in progress."
+    core_architecture: "Stage-based pipeline: ingestion → triage → evidence → learning → implementation → codegen. Pydantic schemas. Keyring/env auth."
+    current_priorities: [ingestion, triage, evidence stage]
+    integration_surfaces: [schemas, config, registry]
+    does_not_belong: "Full web UI, crypto, generic productivity tools"

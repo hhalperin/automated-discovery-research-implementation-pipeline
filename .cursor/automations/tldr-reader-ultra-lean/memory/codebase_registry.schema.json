@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "codebase_registry",
+  "description": "Compact directory of repos for TLDR Reader relevance scoring",
+  "type": "object",
+  "properties": {
+    "repos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["repo_name", "purpose"],
+        "properties": {
+          "repo_name": { "type": "string" },
+          "purpose": { "type": "string" },
+          "stack": { "type": "array", "items": { "type": "string" } },
+          "maturity": { "type": "string", "enum": ["experimental", "alpha", "beta", "stable"] },
+          "domains": { "type": "array", "items": { "type": "string" } },
+          "integration_targets": { "type": "array", "items": { "type": "string" } },
+          "exclusions": { "type": "array", "items": { "type": "string" } },
+          "best_issue_style": { "type": "string" },
+          "last_updated": { "type": "string", "format": "date" }
+        }
+      }
+    }
+  }
+}

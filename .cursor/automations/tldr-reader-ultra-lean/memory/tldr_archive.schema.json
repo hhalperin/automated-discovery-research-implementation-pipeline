@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "tldr_archive",
+  "description": "Rolling 14-day archive of processed TLDR items",
+  "type": "object",
+  "properties": {
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["date", "title", "canonical_link"],
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "title": { "type": "string" },
+          "canonical_link": { "type": "string", "format": "uri" },
+          "classification": { "type": "string" },
+          "repo_match": { "type": "string" },
+          "action_taken": { "type": "string", "enum": ["issue", "slack", "archive_only", "rejected"] },
+          "free_status": { "type": "string", "enum": ["yes", "no", "maybe"] }
+        }
+      }
+    }
+  }
+}
