@@ -1,0 +1,11 @@
+{
+  "name": "tldr-reader-automation-setup",
+  "private": true,
+  "scripts": {
+    "setup": "npx playwright install chromium && node setup-automation.js",
+    "run": "node setup-automation.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

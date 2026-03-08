@@ -1,0 +1,54 @@
+# TLDR Reader — Ultra-Lean Digest
+# Runs daily at 7:00 AM UTC. Uses Cursor Cloud Agents API to launch the agent.
+# Alternative to creating an automation at cursor.com/automations/new (no API for that).
+
+name: TLDR Reader Daily
+
+on:
+  schedule:
+    # 7:00 AM UTC daily. Adjust for local: 7 AM EST = 12 UTC, 7 AM PST = 15 UTC
+    - cron: "0 7 * * *"
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  launch-tldr-reader:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Launch TLDR Reader agent
+        id: launch
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_AGENTS_API_KEY }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          if [ -z "$CURSOR_API_KEY" ]; then
+            echo "::error::CURSOR_AGENTS_API_KEY secret not set. Add it in repo Settings > Secrets."
+            exit 1
+          fi
+
+          TODAY=$(date -u +%Y-%m-%d)
+          PROMPT_CONTENT=$(sed "s/{YYYY-MM-DD}/$TODAY/g" .cursor/automations/tldr-reader-ultra-lean/prompt.md)
+          BODY=$(jq -n \
+            --arg prompt "$PROMPT_CONTENT" \
+            --arg repo "$REPO_URL" \
+            '{prompt: {text: $prompt}, source: {repository: $repo, ref: "main"}, target: {autoCreatePr: false}}')
+
+          echo "Launching agent for $TODAY..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://api.cursor.com/v0/agents" \
+            -H "Authorization: Bearer $CURSOR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$BODY")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY_RESP=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            AGENT_ID=$(echo "$BODY_RESP" | jq -r '.id')
+            echo "Agent launched: $AGENT_ID"
+          else
+            echo "::error::API request failed (HTTP $HTTP_CODE)"
+            echo "$BODY_RESP" | jq . 2>/dev/null || echo "$BODY_RESP"
+            exit 1
+          fi
