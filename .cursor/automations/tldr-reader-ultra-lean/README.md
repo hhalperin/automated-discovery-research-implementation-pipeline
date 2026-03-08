@@ -2,14 +2,31 @@
 
 A Cursor Automation that runs daily, scans TLDR Tech for high-leverage ideas matching your repos, and creates GitHub issues only when justified.
 
-## Quick start
+## Setup options
 
-1. **Create the automation** at [cursor.com/automations/new](https://cursor.com/automations/new)
+Cursor does not expose an API to create automations (UI only). Two ways to run this:
+
+### Option A: GitHub Actions + Cloud Agents API (recommended)
+
+Uses the Cursor Cloud Agents API to launch the agent on a schedule. No manual UI setup.
+
+1. **Get API key:** [Cursor Dashboard](https://cursor.com/settings) → Integrations → Cloud Agents API
+2. **Add secret:** Repo → Settings → Secrets and variables → Actions → New repository secret
+   - Name: `CURSOR_AGENTS_API_KEY`
+   - Value: your API key
+3. **Schedule:** Workflow runs at 7:00 AM UTC daily (`.github/workflows/tldr-reader-daily.yml`). To match local time, adjust the cron (e.g. 7 AM EST = `0 12 * * *`).
+4. **Manual run:** Actions tab → TLDR Reader Daily → Run workflow
+
+**Note:** API-launched agents run in Cursor's cloud with repo access. Tool availability (web fetch, Slack, etc.) may differ from UI-configured automations. If the agent cannot fetch tldr.tech, use Option B.
+
+### Option B: Cursor Automations UI
+
+1. **Create** at [cursor.com/automations/new](https://cursor.com/automations/new)
 2. **Name:** TLDR Reader - Ultra-Lean Digest
-3. **Trigger:** Schedule → Cron `0 7 * * *` (7:00 AM daily). Set timezone to local if supported.
+3. **Trigger:** Schedule → Cron `0 7 * * *`. Set timezone to local if supported.
 4. **Tools:** Enable Web fetch, Memory, GitHub (create issues), Slack (optional)
-5. **Prompt:** Paste the contents of `prompt.md` into the automation prompt field
-6. **Memory:** Point the automation to this repo's `.cursor/automations/tldr-reader-ultra-lean/memory/` directory (or configure MCP/file access so it can read/write these files)
+5. **Prompt:** Paste contents of `prompt.md`
+6. **Memory:** Point to this repo's `memory/` directory
 
 ## First-run bootstrap
 
