@@ -1,0 +1,117 @@
+# CACD — runs gates + judges on every PR, then posts a sticky review comment.
+# This is the *caller* workflow; the heavy lifting lives in cacd/ (vendored).
+
+name: CACD
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
+concurrency:
+  group: cacd-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cacd:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install jq + PyYAML
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y jq
+          pip install --disable-pip-version-check pyyaml openai
+
+      - name: Derive CACD inputs
+        id: inputs
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BRANCH:   ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          BODY_FILE="$RUNNER_TEMP/pr-body.txt"
+          printf '%s' "$PR_BODY" > "$BODY_FILE"
+          {
+            echo "pr_body_file=$BODY_FILE"
+            echo "base_sha=$BASE_SHA"
+            echo "head_sha=$HEAD_SHA"
+            echo "branch=$BRANCH"
+            echo "base_ref=origin/$BASE_REF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run CACD
+        id: cacd
+        env:
+          CACD_BASE_SHA: ${{ steps.inputs.outputs.base_sha }}
+          CACD_HEAD_SHA: ${{ steps.inputs.outputs.head_sha }}
+          CACD_BRANCH: ${{ steps.inputs.outputs.branch }}
+          CACD_PR_BODY_FILE: ${{ steps.inputs.outputs.pr_body_file }}
+          CACD_BASE_REF: ${{ steps.inputs.outputs.base_ref }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set +e
+          chmod +x cacd/bin/cacd cacd/install.sh
+          find cacd -name '*.sh' -exec chmod +x {} +
+          ./cacd/bin/cacd run
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Upload CACD artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cacd-out
+          path: .cacd/out
+          if-no-files-found: ignore
+
+      - name: Post sticky PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: cacd
+          path: .cacd/out/report.md
+
+      - name: Apply labels
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          [[ -f .cacd/out/labels.txt ]] || exit 0
+          # Strip existing cacd/* labels first.
+          existing=$(gh pr view "$PR_NUMBER" --json labels --jq '.labels[].name' || true)
+          while IFS= read -r lbl; do
+            if [[ "$lbl" == cacd/* ]]; then
+              gh pr edit "$PR_NUMBER" --remove-label "$lbl" >/dev/null || true
+            fi
+          done <<< "$existing"
+          while IFS= read -r lbl; do
+            [[ -z "$lbl" ]] && continue
+            gh label create "$lbl" --color ededed 2>/dev/null || true
+            gh pr edit "$PR_NUMBER" --add-label "$lbl" >/dev/null
+          done < .cacd/out/labels.txt
+
+      - name: Fail job if gates failed
+        if: steps.cacd.outputs.exit_code != '0'
+        run: |
+          echo "CACD gates failed — see sticky PR comment."
+          exit 1

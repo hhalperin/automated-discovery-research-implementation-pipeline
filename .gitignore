@@ -2,3 +2,4 @@
 .cursor/plan-logs/
 .cursor/automations/**/playwright/.auth-state.json
 scripts
+.cacd/out/

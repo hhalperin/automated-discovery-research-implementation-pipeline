@@ -1,0 +1,64 @@
+# CACD on-demand revert. Trigger by commenting on a merged PR:
+#     /cacd revert <sha>
+# or dispatch manually from the Actions tab.
+name: CACD Revert
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA to revert"
+        required: true
+      base:
+        description: "Base branch for the revert PR"
+        default: main
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  revert:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.issue.pull_request && startsWith(github.event.comment.body, '/cacd revert'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Parse inputs
+        id: parse
+        env:
+          BODY: ${{ github.event.comment.body }}
+          WD_SHA: ${{ inputs.sha }}
+          WD_BASE: ${{ inputs.base }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${WD_SHA:-}" ]]; then
+            sha="$WD_SHA"; base="${WD_BASE:-main}"
+          else
+            sha=$(printf '%s' "$BODY" | awk '{print $3}')
+            base="main"
+          fi
+          [[ -n "$sha" ]] || { echo "no SHA"; exit 2; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "cacd-bot"
+          git config user.email "cacd-bot@users.noreply.github.com"
+
+      - name: Open revert PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x cacd/bin/cacd
+          find cacd -name '*.sh' -exec chmod +x {} +
+          ./cacd/bin/cacd revert "${{ steps.parse.outputs.sha }}" --base "${{ steps.parse.outputs.base }}"

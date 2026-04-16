@@ -1,0 +1,52 @@
+# CACD New Repo — scaffold a fresh repo, preinstalled with CACD, from a host repo.
+#
+# Intended to live in an "org template" repo. Dispatch it, it clones itself
+# into a fresh repo under your org and pushes the initial commit.
+name: CACD New Repo
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: "New repo name"
+        required: true
+      owner:
+        description: "GitHub owner (user or org)"
+        required: true
+      language:
+        description: "Language (py | node | generic)"
+        default: generic
+      visibility:
+        description: "public | private"
+        default: private
+
+permissions:
+  contents: read
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: sudo apt-get update -y && sudo apt-get install -y jq
+      - name: Scaffold new repo
+        env:
+          GH_TOKEN: ${{ secrets.CACD_SCAFFOLD_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x cacd/bin/cacd
+          find cacd -name '*.sh' -exec chmod +x {} +
+          ./cacd/bin/cacd new-repo "${{ inputs.name }}" \
+            --language "${{ inputs.language }}" \
+            --owner "${{ inputs.owner }}" \
+            --path "$RUNNER_TEMP/${{ inputs.name }}"
+      - name: Create remote & push
+        env:
+          GH_TOKEN: ${{ secrets.CACD_SCAFFOLD_TOKEN || secrets.GITHUB_TOKEN }}
+        working-directory: ${{ runner.temp }}/${{ inputs.name }}
+        run: |
+          gh repo create "${{ inputs.owner }}/${{ inputs.name }}" \
+            --"${{ inputs.visibility }}" \
+            --source . \
+            --remote origin \
+            --push

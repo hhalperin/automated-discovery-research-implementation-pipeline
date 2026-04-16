@@ -1,0 +1,5 @@
+hooks:
+  lint:
+    - "npm run lint --silent"
+  tests:
+    - "npm test --silent"
