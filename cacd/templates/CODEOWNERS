@@ -1,7 +1,0 @@
-# Default codeowners — override for your org.
-*       @{{OWNER}}
-
-# Keep CACD itself guarded.
-/cacd/                  @{{OWNER}}
-/.github/workflows/cacd* @{{OWNER}}
-/.cacd/                 @{{OWNER}}

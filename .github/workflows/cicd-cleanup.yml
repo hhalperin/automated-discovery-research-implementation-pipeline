@@ -1,0 +1,37 @@
+# CICD branch hygiene: prune merged stale branches, label stale agent PRs.
+name: CICD Cleanup
+
+on:
+  schedule:
+    - cron: "17 6 * * *"   # daily at 06:17 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (do not delete)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update -y && sudo apt-get install -y jq
+      - name: Run CICD branch cleanup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CICD_REPO_SLUG: ${{ github.repository }}
+        run: |
+          chmod +x cicd/bin/cicd
+          find cicd -name '*.sh' -exec chmod +x {} +
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            ./cicd/bin/cicd cleanup-branches --dry-run
+          else
+            ./cicd/bin/cicd cleanup-branches
+          fi

@@ -1,0 +1,91 @@
+# .cicd/config.yaml — CICD configuration for this repository.
+# Every key is optional; the defaults below mirror the ones baked into CICD.
+
+checks:
+  enabled:
+    - branch-naming
+    - size-cap
+    - revertability
+    - secrets
+    - doc-parity
+    - lint
+    - tests
+
+  branch_naming:
+    pattern: '^(cursor|feature|fix|chore|docs|adr)\/[a-z0-9][a-z0-9._-]*$'
+    exempt: [main, master, develop]
+
+  size_cap:
+    max_changed_lines: 800
+    max_changed_files: 50
+
+  revertability:
+    max_commits: 20
+    vendored_patterns:
+      - '^vendor/'
+      - '/vendor/'
+      - '^node_modules/'
+      - '/node_modules/'
+      - 'package-lock\.json$'
+      - 'yarn\.lock$'
+      - 'poetry\.lock$'
+      - 'Pipfile\.lock$'
+      - 'go\.sum$'
+    infra_patterns:
+      - '^\.github/'
+      - '^\.cicd/'
+      - '^infra/'
+      - '^terraform/'
+      - '^deploy/'
+      - 'Dockerfile$'
+      - 'docker-compose\.ya?ml$'
+    docs_patterns:
+      - '^docs/'
+      - '^README'
+      - '\.md$'
+
+  doc_parity:
+    code_patterns:
+      - '\.py$'
+      - '\.ts$'
+      - '\.tsx$'
+      - '\.js$'
+      - '\.jsx$'
+      - '\.go$'
+      - '\.rs$'
+      - '\.java$'
+      - '\.rb$'
+      - '^src/'
+      - '^lib/'
+      - '^pkg/'
+    docs_patterns:
+      - '^docs/'
+      - '^README'
+      - '\.md$'
+      - '^CHANGELOG'
+
+judges:
+  # Judges emit structured verdicts. They are **advisory** by default.
+  enabled:
+    - improvement
+    - quality
+    - docs-accuracy
+  # Listed judges are promoted to blocking (fail the run on regression/fail).
+  blocking: []
+
+hooks:
+  # Language-specific lint and test commands. CICD runs each shell-quoted
+  # command in a subshell. A non-zero exit fails the gate.
+  lint: []
+  tests: []
+
+branch_cleanup:
+  protect: [main, master, develop, release]
+  prefix_allowlist:
+    - 'cursor/'
+    - 'feature/'
+    - 'fix/'
+    - 'chore/'
+    - 'docs/'
+    - 'adr/'
+  stale_days: 14
