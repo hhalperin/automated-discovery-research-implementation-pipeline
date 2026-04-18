@@ -12,6 +12,9 @@
 #   cicd report                      Aggregate .cicd/out into report.md.
 #   cicd cleanup-branches            Prune merged branches, label stale PRs.
 #   cicd revert <sha>                Open a revert PR for a merged commit.
+#   cicd install-agent [--check]     Install the Cursor CLI ('agent' binary).
+#   cicd setup-cursor [--repo o/n]   Programmatically wire CURSOR_API_KEY into
+#                                    a repo + check Cursor GitHub App install.
 #   cicd version                     Print the CICD version.
 
 set -euo pipefail
@@ -66,6 +69,14 @@ case "$cmd" in
 
     revert)
         exec "$CICD_ROOT/lib/revert.sh" "$@"
+        ;;
+
+    install-agent)
+        exec "$CICD_ROOT/lib/install-agent.sh" "$@"
+        ;;
+
+    setup-cursor)
+        exec "$CICD_ROOT/lib/setup-cursor.sh" "$@"
         ;;
 
     *)

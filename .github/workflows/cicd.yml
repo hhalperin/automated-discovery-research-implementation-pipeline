@@ -38,6 +38,20 @@ jobs:
           sudo apt-get update -y && sudo apt-get install -y jq
           pip install --disable-pip-version-check pyyaml openai
 
+      - name: Install Cursor CLI (for LLM judges)
+        # Skip silently when the secret is missing — judges will fall back
+        # to OpenAI or stub. We never block the pipeline on a missing key.
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+        run: |
+          if [[ -z "${CURSOR_API_KEY:-}" ]]; then
+            echo "CURSOR_API_KEY not set; skipping Cursor CLI install"
+            exit 0
+          fi
+          chmod +x cicd/bin/cicd
+          find cicd -name '*.sh' -exec chmod +x {} +
+          ./cicd/bin/cicd install-agent || echo "::warning::Cursor CLI install failed; judges will fall back"
+
       - name: Derive CICD inputs
         id: inputs
         env:
@@ -77,6 +91,7 @@ jobs:
           CICD_PR_BODY_FILE: ${{ steps.inputs.outputs.pr_body_file }}
           CICD_BASE_REF: ${{ steps.inputs.outputs.base_ref }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
         run: |
           set +e
           chmod +x cicd/bin/cicd cicd/install.sh

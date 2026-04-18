@@ -32,8 +32,28 @@ cicd::judge::_collect_commits() {
     git log --no-merges --format='- %h %s' "$base..$head" 2>/dev/null || true
 }
 
+# Resolve the path to the Cursor CLI binary.
+# Cursor renamed `cursor-agent` to plain `agent` (installed under
+# ~/.local/bin or ~/.cursor/bin by `curl https://cursor.com/install | bash`).
+# We accept either, in this priority: PATH `agent`, PATH `cursor-agent`,
+# `~/.cursor/bin/agent`, `~/.local/bin/agent`.
+cicd::judge::_cursor_bin() {
+    if command -v agent >/dev/null 2>&1; then
+        command -v agent
+        return 0
+    fi
+    if command -v cursor-agent >/dev/null 2>&1; then
+        command -v cursor-agent
+        return 0
+    fi
+    for cand in "$HOME/.cursor/bin/agent" "$HOME/.local/bin/agent"; do
+        [[ -x "$cand" ]] && { printf '%s' "$cand"; return 0; }
+    done
+    return 1
+}
+
 cicd::judge::_backend() {
-    if command -v cursor-agent >/dev/null 2>&1 && [[ -n "${CURSOR_API_KEY:-}${CURSOR_AGENTS_API_KEY:-}" ]]; then
+    if cicd::judge::_cursor_bin >/dev/null 2>&1 && [[ -n "${CURSOR_API_KEY:-}${CURSOR_AGENTS_API_KEY:-}" ]]; then
         echo cursor-agent
     elif [[ -n "${OPENAI_API_KEY:-}" ]] && python3 -c 'import openai' >/dev/null 2>&1; then
         echo openai
@@ -97,13 +117,19 @@ PY
 
 cicd::judge::_call_cursor_agent() {
     local prompt="$1"
-    if ! command -v cursor-agent >/dev/null 2>&1; then
-        printf '{"verdict":"skipped","rationale":"cursor-agent not installed","score":null,"suggestions":[]}'
+    local bin
+    if ! bin=$(cicd::judge::_cursor_bin); then
+        printf '{"verdict":"skipped","rationale":"Cursor CLI not installed (run cicd install-agent)","score":null,"suggestions":[]}'
         return 0
     fi
-    # The `cursor-agent` CLI is expected to accept a one-shot prompt and return stdout.
-    cursor-agent run --json --prompt "$prompt" 2>/dev/null \
-        || printf '{"verdict":"skipped","rationale":"cursor-agent failed","score":null,"suggestions":[]}'
+    # The Cursor CLI exposes a non-interactive `print` mode via -p / --print.
+    # We force JSON output so the judge prompt's required object format is
+    # preserved through the model response. CURSOR_API_KEY is supplied via env.
+    local model="${CICD_CURSOR_MODEL:-}"
+    local args=(-p "$prompt" --output-format json)
+    [[ -n "$model" ]] && args+=(--model "$model")
+    "$bin" "${args[@]}" 2>/dev/null \
+        || printf '{"verdict":"skipped","rationale":"Cursor CLI invocation failed","score":null,"suggestions":[]}'
 }
 
 cicd::judge::run() {
@@ -119,7 +145,7 @@ cicd::judge::run() {
     case "$backend" in
         openai)        raw=$(printf '%s' "$rendered" | cicd::judge::_call_openai) ;;
         cursor-agent)  raw=$(cicd::judge::_call_cursor_agent "$rendered") ;;
-        stub|*)        raw='{"verdict":"skipped","rationale":"no LLM backend available (set OPENAI_API_KEY or install cursor-agent)","score":null,"suggestions":[]}' ;;
+        stub|*)        raw='{"verdict":"skipped","rationale":"no LLM backend available (set OPENAI_API_KEY, or install Cursor CLI with `cicd install-agent` and set CURSOR_API_KEY)","score":null,"suggestions":[]}' ;;
     esac
 
     local parsed

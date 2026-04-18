@@ -172,6 +172,23 @@ step "revertability: allow-mixed override passes"
         "$CICD_ROOT/bin/cicd" check revertability >/dev/null
 ) && ok "allow-mixed override passes" || ng "allow-mixed override should pass"
 
+step "install-agent --check returns 1 when Cursor CLI absent"
+( unset CURSOR_API_KEY
+  PATH=/usr/local/bin:/usr/bin:/bin HOME=$(mktemp -d) "$CICD_ROOT/bin/cicd" install-agent --check --quiet >/dev/null 2>&1
+) && ng "install-agent --check should fail without CLI" || ok "install-agent --check fails when CLI absent"
+
+step "judge backend prefers 'agent' over legacy 'cursor-agent'"
+( fake_dir=$(mktemp -d)
+  cat > "$fake_dir/agent" <<'STUB'
+#!/usr/bin/env bash
+echo "agent 99.0.0"
+STUB
+  chmod +x "$fake_dir/agent"
+  out=$(PATH="$fake_dir:$PATH" CURSOR_API_KEY=dummy bash -c '. "$CICD_ROOT/lib/common.sh"; . "$CICD_ROOT/lib/judges/_runner.sh"; cicd::judge::_backend')
+  rm -rf "$fake_dir"
+  [[ "$out" == "cursor-agent" ]]
+) && ok "backend resolves to cursor-agent when 'agent' is on PATH" || ng "backend did not detect 'agent' binary"
+
 step "judge with no backend emits 'skipped' verdict"
 JUDGE_REPO="$WORK/judge-repo"
 git_init_repo "$JUDGE_REPO"

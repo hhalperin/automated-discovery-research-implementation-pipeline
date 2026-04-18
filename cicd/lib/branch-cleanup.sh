@@ -29,7 +29,11 @@ done
 slug="${CICD_REPO_SLUG:-}"
 if [[ -z "$slug" ]]; then
     origin=$(git remote get-url origin 2>/dev/null || echo "")
-    slug=$(printf '%s' "$origin" | sed -E 's#(git@|https?://)([^:/]+)[/:]+##; s#\.git$##')
+    slug=$(printf '%s' "$origin" \
+        | sed -E 's#^(git@|https?://)##' \
+        | sed -E 's#^[^@/]+@##' \
+        | sed -E 's#^[^:/]+[:/]+##' \
+        | sed -E 's#\.git$##')
 fi
 
 if [[ -z "$slug" ]]; then
