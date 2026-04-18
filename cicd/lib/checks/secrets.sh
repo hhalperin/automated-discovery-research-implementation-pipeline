@@ -3,12 +3,7 @@
 set -euo pipefail
 . "$CICD_ROOT/lib/common.sh"
 
-base="${CICD_BASE_SHA:-}"
-head="${CICD_HEAD_SHA:-HEAD}"
-if [[ -z "$base" ]]; then
-    base=$(git merge-base "$CICD_BASE_REF" "$head" 2>/dev/null || git rev-parse "$CICD_BASE_REF" 2>/dev/null || echo "")
-fi
-
+IFS=$'\t' read -r base head < <(cicd::_resolve_refs)
 if [[ -z "$base" ]]; then
     cicd::emit check secrets skipped "cannot determine merge base" null
     exit 0

@@ -17,15 +17,10 @@ infra_patterns_json=$(cicd::config checks.revertability.infra_patterns \
     '["^\\.github/","^\\.cicd/","^infra/","^terraform/","^deploy/","Dockerfile$","docker-compose.ya?ml$"]')
 docs_patterns_json=$(cicd::config checks.revertability.docs_patterns '["^docs/","^README","\\.md$"]')
 
-base="${CICD_BASE_SHA:-}"
-head="${CICD_HEAD_SHA:-HEAD}"
-if [[ -z "$base" ]]; then
-    base=$(git merge-base "$CICD_BASE_REF" "$head" 2>/dev/null || git rev-parse "$CICD_BASE_REF" 2>/dev/null || echo "")
-fi
-
+IFS=$'\t' read -r base head < <(cicd::_resolve_refs)
 commits=0
 if [[ -n "$base" ]]; then
-    commits=$(git rev-list --count "$base..$head")
+    commits=$(git rev-list --count "$base..$head" 2>/dev/null || echo 0)
 fi
 
 changed=$(cicd::changed_files || true)

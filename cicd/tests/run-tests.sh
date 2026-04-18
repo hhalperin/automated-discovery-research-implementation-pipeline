@@ -8,6 +8,14 @@ set -euo pipefail
 CICD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export CICD_ROOT
 
+# Tests create their own throwaway repos, so any CICD_* env vars inherited
+# from a parent invocation (e.g., when `cicd run` is itself the test hook
+# in CI) must be scrubbed — otherwise the inner repos try to resolve SHAs
+# and PR-body files that only exist in the parent repo, causing
+# "Invalid revision range" errors and silently-passing should-fail tests.
+unset CICD_BASE_SHA CICD_HEAD_SHA CICD_BASE_REF CICD_BRANCH \
+      CICD_PR_BODY_FILE CICD_REPO CICD_OUT CICD_CONFIG OPENAI_API_KEY
+
 pass=0; fail=0; failures=()
 ok()   { printf '  \e[32mok\e[0m  %s\n' "$*"; pass=$((pass+1)); }
 ng()   { printf '  \e[31mFAIL\e[0m %s\n' "$*"; fail=$((fail+1)); failures+=("$*"); }

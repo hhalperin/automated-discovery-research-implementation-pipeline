@@ -15,27 +15,21 @@ set -euo pipefail
 . "$CICD_ROOT/lib/common.sh"
 
 cicd::judge::_collect_diff() {
-    local base="${CICD_BASE_SHA:-}"
-    local head="${CICD_HEAD_SHA:-HEAD}"
-    if [[ -z "$base" ]]; then
-        base=$(git merge-base "$CICD_BASE_REF" "$head" 2>/dev/null || git rev-parse "$CICD_BASE_REF" 2>/dev/null || echo "")
-    fi
+    local base head
+    IFS=$'\t' read -r base head < <(cicd::_resolve_refs)
     if [[ -z "$base" ]]; then
         echo "(no merge base)"
         return 0
     fi
     # Cap diff size so judges stay cheap.
-    git diff --unified=3 "$base..$head" | head -c 60000
+    git diff --unified=3 "$base..$head" 2>/dev/null | head -c 60000
 }
 
 cicd::judge::_collect_commits() {
-    local base="${CICD_BASE_SHA:-}"
-    local head="${CICD_HEAD_SHA:-HEAD}"
-    if [[ -z "$base" ]]; then
-        base=$(git merge-base "$CICD_BASE_REF" "$head" 2>/dev/null || git rev-parse "$CICD_BASE_REF" 2>/dev/null || echo "")
-    fi
+    local base head
+    IFS=$'\t' read -r base head < <(cicd::_resolve_refs)
     [[ -z "$base" ]] && { echo "(no merge base)"; return 0; }
-    git log --no-merges --format='- %h %s' "$base..$head"
+    git log --no-merges --format='- %h %s' "$base..$head" 2>/dev/null || true
 }
 
 cicd::judge::_backend() {

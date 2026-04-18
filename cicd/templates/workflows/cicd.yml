@@ -41,15 +41,25 @@ jobs:
       - name: Derive CICD inputs
         id: inputs
         env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BRANCH:   ${{ github.event.pull_request.head.ref }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          # The body in the PR webhook payload is a snapshot at trigger time;
+          # later edits to the PR body would not take effect on a re-run
+          # unless we refetch. Pull the live body via the GitHub API.
+          GH_TOKEN:      ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER:     ${{ github.event.pull_request.number }}
+          PR_BODY_EVENT: ${{ github.event.pull_request.body }}
+          BASE_SHA:      ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA:      ${{ github.event.pull_request.head.sha }}
+          BRANCH:        ${{ github.event.pull_request.head.ref }}
+          BASE_REF:      ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           BODY_FILE="$RUNNER_TEMP/pr-body.txt"
-          printf '%s' "$PR_BODY" > "$BODY_FILE"
+          # Refetch the live PR body; fall back to the trigger-time body
+          # if the API call fails for any reason.
+          if ! gh pr view "$PR_NUMBER" --json body --jq .body > "$BODY_FILE" 2>/dev/null; then
+            echo "::warning::could not fetch live PR body; using event payload"
+            printf '%s' "${PR_BODY_EVENT:-}" > "$BODY_FILE"
+          fi
           {
             echo "pr_body_file=$BODY_FILE"
             echo "base_sha=$BASE_SHA"

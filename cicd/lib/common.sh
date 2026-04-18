@@ -80,31 +80,43 @@ else:
 PY
 }
 
-# Collect changed files between base and head as newline-delimited.
-cicd::changed_files() {
-    local base="${CICD_BASE_SHA:-}" head="${CICD_HEAD_SHA:-HEAD}"
+# Resolve (base, head) refs that are guaranteed to exist in *this* repo.
+# Robust against env-var leakage from a parent cicd invocation that runs
+# inside a different repo (the test hook is the canonical case).
+cicd::_resolve_refs() {
+    local head="${CICD_HEAD_SHA:-HEAD}"
+    git rev-parse --verify "$head^{commit}" >/dev/null 2>&1 || head="HEAD"
+    local base="${CICD_BASE_SHA:-}"
+    if [[ -n "$base" ]] && ! git rev-parse --verify "$base^{commit}" >/dev/null 2>&1; then
+        base=""
+    fi
     if [[ -z "$base" ]]; then
         base=$(git merge-base "$CICD_BASE_REF" "$head" 2>/dev/null || git rev-parse "$CICD_BASE_REF" 2>/dev/null || echo "")
     fi
+    printf '%s\t%s\n' "$base" "$head"
+}
+
+# Collect changed files between base and head as newline-delimited.
+cicd::changed_files() {
+    local base head
+    IFS=$'\t' read -r base head < <(cicd::_resolve_refs)
     if [[ -z "$base" ]]; then
         cicd::err "cannot determine merge base; falling back to last commit"
         git diff --name-only HEAD~1..HEAD 2>/dev/null || true
         return 0
     fi
-    git diff --name-only "$base..$head"
+    git diff --name-only "$base..$head" 2>/dev/null || true
 }
 
 cicd::changed_line_stats() {
-    local base="${CICD_BASE_SHA:-}" head="${CICD_HEAD_SHA:-HEAD}"
-    if [[ -z "$base" ]]; then
-        base=$(git merge-base "$CICD_BASE_REF" "$head" 2>/dev/null || git rev-parse "$CICD_BASE_REF" 2>/dev/null || echo "")
-    fi
+    local base head
+    IFS=$'\t' read -r base head < <(cicd::_resolve_refs)
     if [[ -z "$base" ]]; then
         printf '0\t0\t0\n'
         return 0
     fi
     # lines added, lines removed, files changed
-    git diff --numstat "$base..$head" | awk '
+    git diff --numstat "$base..$head" 2>/dev/null | awk '
         BEGIN { a=0; r=0; f=0 }
         $1 == "-" || $2 == "-" { f += 1; next }
         { a += $1; r += $2; f += 1 }
