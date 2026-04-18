@@ -55,13 +55,19 @@ CICD's `install-agent` subcommand wraps that and:
 ./cicd/bin/cicd install-agent --check  # exit 0 if installed, 1 otherwise
 ```
 
-CICD's judge runner (`cicd/lib/judges/_runner.sh`) prefers the Cursor
-CLI when `CURSOR_API_KEY` is set, otherwise falls back to OpenAI, then
-to a `skipped` stub. This is the default backend priority:
+CICD's judge runner (`cicd/lib/judges/_runner.sh`) auto-picks the
+first available backend:
 
-1. `agent` / `cursor-agent` on PATH and `CURSOR_API_KEY` set
-2. `OPENAI_API_KEY` set + `openai` Python SDK importable
-3. stub (judge emits `verdict: skipped`)
+1. **cursor-agent** — `agent` / `cursor-agent` on PATH and
+   `CURSOR_API_KEY` (or `CURSOR_AGENTS_API_KEY`) set.
+2. **anthropic** — `ANTHROPIC_API_KEY` set + `anthropic` Python SDK
+   importable. Model defaults to `claude-sonnet-4-5-20250929`;
+   override with `CICD_ANTHROPIC_MODEL` (or `ANTHROPIC_MODEL`).
+3. **openai** — `OPENAI_API_KEY` set + `openai` Python SDK importable.
+   Model defaults to `gpt-4o-mini`; override with `OPENAI_MODEL`.
+4. **stub** — judge emits `verdict: skipped` (never blocks).
+
+Force a backend explicitly with `CICD_JUDGE_BACKEND=cursor-agent|anthropic|openai|stub`.
 
 ### Choosing a model
 

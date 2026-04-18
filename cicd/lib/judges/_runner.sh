@@ -53,8 +53,15 @@ cicd::judge::_cursor_bin() {
 }
 
 cicd::judge::_backend() {
+    # Override with CICD_JUDGE_BACKEND=cursor-agent|anthropic|openai|stub.
+    case "${CICD_JUDGE_BACKEND:-}" in
+        cursor-agent|anthropic|openai|stub)
+            echo "${CICD_JUDGE_BACKEND}"; return 0 ;;
+    esac
     if cicd::judge::_cursor_bin >/dev/null 2>&1 && [[ -n "${CURSOR_API_KEY:-}${CURSOR_AGENTS_API_KEY:-}" ]]; then
         echo cursor-agent
+    elif [[ -n "${ANTHROPIC_API_KEY:-}" ]] && python3 -c 'import anthropic' >/dev/null 2>&1; then
+        echo anthropic
     elif [[ -n "${OPENAI_API_KEY:-}" ]] && python3 -c 'import openai' >/dev/null 2>&1; then
         echo openai
     else
@@ -115,6 +122,36 @@ except Exception as e:
 PY
 }
 
+cicd::judge::_call_anthropic() {
+    # Reads the rendered prompt from stdin.
+    ANTHROPIC_MODEL="${ANTHROPIC_MODEL:-${CICD_ANTHROPIC_MODEL:-claude-sonnet-4-5-20250929}}" \
+    python3 - <<'PY'
+import json, os, sys
+prompt = sys.stdin.read()
+try:
+    from anthropic import Anthropic
+    client = Anthropic()
+    resp = client.messages.create(
+        model=os.environ.get("ANTHROPIC_MODEL"),
+        max_tokens=1024,
+        temperature=0,
+        system=("You are a strict code-review judge. Respond with a single "
+                "valid JSON object and nothing else — no prose, no code "
+                "fences, just the JSON."),
+        messages=[{"role": "user", "content": prompt}],
+    )
+    # The response is a list of content blocks; take the first text block.
+    text = ""
+    for block in resp.content:
+        if getattr(block, "type", "") == "text":
+            text = block.text
+            break
+    print(text or json.dumps({"verdict":"skipped","rationale":"empty anthropic response","score":None,"suggestions":[]}))
+except Exception as e:
+    print(json.dumps({"verdict":"skipped","rationale":f"anthropic error: {e}","score":None,"suggestions":[]}))
+PY
+}
+
 cicd::judge::_call_cursor_agent() {
     local prompt="$1"
     local bin
@@ -142,11 +179,19 @@ cicd::judge::run() {
     cicd::log "judge '$name' using backend: $backend"
 
     local raw
+    # Write the rendered prompt to a temp file so backends can re-read it
+    # without risking SIGPIPE on long diffs (~60KB).
+    local prompt_tmp
+    prompt_tmp=$(mktemp)
+    printf '%s' "$rendered" > "$prompt_tmp"
+
     case "$backend" in
-        openai)        raw=$(printf '%s' "$rendered" | cicd::judge::_call_openai) ;;
+        openai)        raw=$(cicd::judge::_call_openai    < "$prompt_tmp") ;;
+        anthropic)     raw=$(cicd::judge::_call_anthropic < "$prompt_tmp") ;;
         cursor-agent)  raw=$(cicd::judge::_call_cursor_agent "$rendered") ;;
-        stub|*)        raw='{"verdict":"skipped","rationale":"no LLM backend available (set OPENAI_API_KEY, or install Cursor CLI with `cicd install-agent` and set CURSOR_API_KEY)","score":null,"suggestions":[]}' ;;
+        stub|*)        raw='{"verdict":"skipped","rationale":"no LLM backend available (set ANTHROPIC_API_KEY or OPENAI_API_KEY, or install Cursor CLI with `cicd install-agent` and set CURSOR_API_KEY)","score":null,"suggestions":[]}' ;;
     esac
+    rm -f "$prompt_tmp"
 
     local parsed
     parsed=$(printf '%s' "$raw" | python3 -c '

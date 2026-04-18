@@ -33,10 +33,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install jq + PyYAML
+      - name: Install jq + Python deps
         run: |
           sudo apt-get update -y && sudo apt-get install -y jq
-          pip install --disable-pip-version-check pyyaml openai
+          pip install --disable-pip-version-check pyyaml openai anthropic
 
       - name: Install Cursor CLI (for LLM judges)
         # Skip silently when the secret is missing — judges will fall back
@@ -90,8 +90,15 @@ jobs:
           CICD_BRANCH: ${{ steps.inputs.outputs.branch }}
           CICD_PR_BODY_FILE: ${{ steps.inputs.outputs.pr_body_file }}
           CICD_BASE_REF: ${{ steps.inputs.outputs.base_ref }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          # LLM backends; whichever is available wins, in this priority:
+          # cursor-agent > anthropic > openai > stub. Override per-repo
+          # via .cicd/config.yaml or CICD_JUDGE_BACKEND.
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CURSOR_API_KEY:    ${{ secrets.CURSOR_API_KEY }}
+          CICD_JUDGE_BACKEND:    ${{ vars.CICD_JUDGE_BACKEND }}
+          CICD_ANTHROPIC_MODEL:  ${{ vars.CICD_ANTHROPIC_MODEL }}
+          CICD_CURSOR_MODEL:     ${{ vars.CICD_CURSOR_MODEL }}
         run: |
           set +e
           chmod +x cicd/bin/cicd cicd/install.sh

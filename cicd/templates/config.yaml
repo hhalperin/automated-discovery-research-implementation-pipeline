@@ -72,6 +72,14 @@ judges:
     - docs-accuracy
   # Listed judges are promoted to blocking (fail the run on regression/fail).
   blocking: []
+  # Backend selection priority (auto-resolved):
+  #   cursor-agent > anthropic > openai > stub
+  # Required env vars per backend:
+  #   cursor-agent: CURSOR_API_KEY  (+ Cursor CLI on PATH)
+  #   anthropic:    ANTHROPIC_API_KEY
+  #   openai:       OPENAI_API_KEY
+  # Override the auto-pick by setting CICD_JUDGE_BACKEND.
+  # Pin model with CICD_CURSOR_MODEL / CICD_ANTHROPIC_MODEL / OPENAI_MODEL.
 
 hooks:
   # Language-specific lint and test commands. CICD runs each shell-quoted
