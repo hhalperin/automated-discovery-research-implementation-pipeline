@@ -5,20 +5,31 @@
 name: TLDR Reader - Ultra-Lean Digest
 description: Daily scouting agent for TLDR Tech. Identifies 1-3 high-leverage ideas matching repos. Creates GitHub issues only when justified.
 
+# Repository and branch the automation should run against (mirror in GitHub Actions workflow env if used).
+repo:
+  url: "" # e.g. https://github.com/org/repo — set per deployment
+  ref: main # branch or tag; production runs should pin a stable ref
+
+# Prompt file for production runs (path relative to repo root).
+prompt_file: .cursor/automations/tldr-reader-ultra-lean/prompt.md
+
+# Prompt file for probe runs (read-only capability check).
+prompt_probe_file: .cursor/automations/tldr-reader-ultra-lean/prompt.probe.md
+
 trigger:
   type: schedule
   cron: "0 7 * * *"
-  timezone: local  # or UTC if local not supported
+  timezone: local # or UTC if local not supported; document offset in run log
 
 tools:
   - web_fetch
   - memory
   - github
-  - slack  # optional, for paid-idea notifications only
+  - slack # optional, for paid-idea notifications only
 
 model_tier:
-  triage: cheap  # Steps 1-5
-  deep_dive: strong  # Step 6 only, max 3 per day
+  triage: cheap # Steps 1-5
+  deep_dive: strong # Step 6 only, max 3 per day
 
 memory_paths:
   codebase_registry: .cursor/automations/tldr-reader-ultra-lean/memory/codebase_registry.yaml
@@ -34,3 +45,10 @@ limits:
   max_deep_dives: 3
   max_issues_per_day: 3
   archive_retention_days: 14
+
+# Known caveats (read before enabling schedule)
+caveats:
+  - Cursor Automations are UI-created; there is no public API to create or update them programmatically (use Playwright setup or manual UI).
+  - Cloud/API-launched agents may expose a different tool set than UI automations (e.g. web fetch, Slack); verify with a probe run.
+  - GitHub Actions schedule uses UTC cron unless you change it; align `trigger.timezone` and cron with your intended local wall clock.
+  - Do not enable the automation schedule until probe passes and one manual production pass succeeds (see README).

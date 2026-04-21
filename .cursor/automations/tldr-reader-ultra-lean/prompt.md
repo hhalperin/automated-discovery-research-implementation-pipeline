@@ -46,6 +46,28 @@ If `codebase_registry` and `repo_summaries` do not exist or are low quality:
 
 Execute in this order.
 
+### STEP 0 — Startup checks (must pass before network or writes)
+
+Before fetching TLDR or mutating memory, verify:
+
+1. **Date token:** You have a valid run date `YYYY-MM-DD` (today in the operator’s intended timezone; if unclear, use UTC and note it in the final report).
+2. **Memory readable:** `codebase_registry`, `repo_summaries`, `routing_rules`, `tldr_archive`, and `evaluation_history` paths are readable (per `automation-spec.yaml` → `memory_paths`). If a file is missing, create minimal valid stubs only when this is the documented first-run path; otherwise record the gap for degraded mode.
+3. **Tools available:** You can use web fetch for `https://tldr.tech/...`, memory read/write for the paths above, and GitHub for the target repo. If **web_fetch** or **memory read** is unavailable, do not pretend a full run—enter **degraded mode** (see below) after STEP 0.
+4. **GitHub write:** If you cannot create issues but can read the repo, continue in degraded mode and populate `issue_drafts[]` instead of failing the run.
+
+If all critical capabilities are present, proceed to STEP 1. If not, skip to degraded handling after completing whatever read-only checks are safe.
+
+### Degraded mode (do not abort)
+
+When **web_fetch fails persistently**, **memory is read-only**, **GitHub issue creation is unavailable**, or **source integrity cannot be verified**, do **not** stop with only an error string. Instead:
+
+- Perform any safe partial work (e.g. read memory, note blockers).
+- Populate `issue_drafts[]` with structured draft objects for any candidate that *would* have received an issue, including `title`, `body_markdown`, `target_repo`, `blocker` (why it was not filed).
+- Set terminal outcome to `degraded_manual_handoff`.
+- Still output the **Production final report JSON** (see STEP 10) with `outcome: "degraded_manual_handoff"` and `blocking_reasons[]` explaining what the operator must fix.
+
+Never exceed normal daily limits (`max_candidates`, `max_deep_dives`, `max_issues_per_day`, archive retention) even in degraded mode.
+
 ### STEP 1 — Acquire issue
 
 - Fetch: `https://tldr.tech/tech/{YYYY-MM-DD}` (use today's date)
@@ -179,11 +201,42 @@ Trim archive to last 14 days.
 
 Update `evaluation_history` with: categories that waste time, false positive patterns, repo routing mistakes, source types correlating with high-value ideas.
 
-### STEP 9 — Final log
+Complete archive and learning **before** emitting the final report (STEP 10). If degraded mode prevents writes, say so in the final JSON `blocking_reasons`.
+
+### STEP 9 — Production final report (strict JSON)
+
+After all steps, emit **exactly one JSON object** between the following markers. No markdown fences, no extra narrative outside the markers.
 
 ```
-Processed {date}: {num_candidates} candidates, {num_deep_dives} deep dives, {num_hits} hits, {num_issues} issues, {num_slack} Slack notifications.
+BEGIN PRODUCTION FINAL REPORT JSON
 ```
+
+```
+END PRODUCTION FINAL REPORT JSON
+```
+
+#### Terminal outcomes (`outcome`)
+
+Use exactly one of:
+
+| Value | When |
+|--------|------|
+| `success_with_issues` | Normal run; one or more GitHub issues were created as policy allows. |
+| `success_no_hits` | Normal run; zero issues and zero Slack; legitimately nothing to act on (e.g. no hits after filters). |
+| `degraded_manual_handoff` | Any required capability missing or writes blocked; partial results only; `issue_drafts[]` and `blocking_reasons[]` must be populated. |
+
+#### JSON fields (required unless noted)
+
+- `report_version`: `"1"`
+- `date`: `YYYY-MM-DD` for this run
+- `outcome`: `success_with_issues` \| `success_no_hits` \| `degraded_manual_handoff`
+- `candidates_considered`: number
+- `deep_dives`: number
+- `issues_created`: number
+- `slack_notifications`: number
+- `issue_drafts`: array of objects (empty if none); each may include `title`, `body_markdown`, `target_repo`, `blocker`
+- `blocking_reasons`: string array (empty unless degraded or partial failure)
+- `summary_one_line`: single-line human summary for logs
 
 ---
 
@@ -194,7 +247,7 @@ Processed {date}: {num_candidates} candidates, {num_deep_dives} deep dives, {num
 - Never exceed 200-token repo summaries during relevance scanning.
 - Never deep dive an item below threshold.
 - Never create more than 3 issues per day.
-- Be silent on zero-action days except internal log/archive.
+- Be silent on zero-action days except the structured final JSON (and memory updates where possible).
 - Prefer one strong issue over three weak ones.
 - If evidence for "free/open-source" is weak, mark maybe rather than guessing.
 - If routing to repo is ambiguous, choose archive_only unless confidence is high.
