@@ -20,11 +20,16 @@ jobs:
       - name: Launch TLDR Reader agent
         id: launch
         env:
-          CURSOR_API_KEY: ${{ secrets.CURSOR_AGENTS_API_KEY }}
+          # GitHub Actions only sees secrets configured on the repo/org — not Cursor IDE user settings.
+          # Accept common names so one secret can match dashboard or docs wording.
+          CURSOR_API_KEY: ${{ secrets.CURSOR_AGENTS_API_KEY || secrets.CURSOR_API_KEY || secrets.CURSOR_CLOUD_AGENTS_API_KEY }}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
           if [ -z "$CURSOR_API_KEY" ]; then
-            echo "::error::CURSOR_AGENTS_API_KEY secret not set. Add it in repo Settings > Secrets."
+            echo "::error::No Cursor Cloud Agents API key in GitHub Actions secrets."
+            echo "::error::Add one of: CURSOR_AGENTS_API_KEY, CURSOR_API_KEY, or CURSOR_CLOUD_AGENTS_API_KEY"
+            echo "::error::at Repository Settings → Secrets and variables → Actions (organization secrets also work)."
+            echo "::error::IDE-only env vars (Cursor user settings) are not visible to this workflow."
             exit 1
           fi
 
