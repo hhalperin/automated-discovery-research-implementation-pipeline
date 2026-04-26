@@ -52,9 +52,10 @@ Uses the Cursor Cloud Agents API to launch the agent on a schedule. No manual UI
 
 1. **Get API key:** [Cursor Dashboard](https://cursor.com/settings) → Integrations → Cloud Agents API
 2. **Add secret:** Repo → Settings → Secrets and variables → Actions → New repository secret
-   - Name: `CURSOR_AGENTS_API_KEY`
+   - Name: `CURSOR_AGENTS_API_KEY` (or `CURSOR_API_KEY` / `CURSOR_CLOUD_AGENTS_API_KEY` — the workflow accepts any of these)
    - Value: your API key
-3. **Workflow:** `.github/workflows/tldr-reader-daily.yml` runs on cron `0 7 * * *` (UTC). Adjust cron for local wall clock (e.g. 7 AM EST = `0 12 * * *`).
+   - **Important:** Storing the key only in Cursor IDE user settings does **not** supply it to GitHub Actions. You must add it as an Actions secret on this repository (or use an organization secret with access to the repo).
+3. **Workflow / schedule:** `.github/workflows/tldr-reader-daily.yml` runs on cron `0 7 * * *` (UTC). To match local wall clock, adjust the cron in that file (e.g. 7 AM EST = `0 12 * * *`).
 4. **Manual run:** Actions tab → TLDR Reader Daily → Run workflow
 
 **Note:** API-launched agents run in Cursor's cloud with repo access. Tool availability (web fetch, Slack, etc.) may differ from UI-configured automations. If the agent cannot fetch tldr.tech, prefer Option A or B.
