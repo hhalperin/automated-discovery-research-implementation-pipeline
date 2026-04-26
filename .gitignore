@@ -1,5 +1,6 @@
 .env
 .cursor/plan-logs/
 .cursor/automations/**/playwright/.auth-state.json
-scripts
+scripts/*
+!scripts/validate-tldr-reader.sh
 .cicd/out/
