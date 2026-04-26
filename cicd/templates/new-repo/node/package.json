@@ -1,0 +1,10 @@
+{
+  "name": "{{REPO_NAME}}",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "echo 'configure a real linter'",
+    "test": "node --test"
+  }
+}

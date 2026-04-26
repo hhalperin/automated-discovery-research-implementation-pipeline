@@ -3,3 +3,4 @@
 .cursor/automations/**/playwright/.auth-state.json
 scripts/*
 !scripts/validate-tldr-reader.sh
+.cicd/out/

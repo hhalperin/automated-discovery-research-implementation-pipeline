@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# cicd — universal Continuous-Iteration Continuous-Development CLI.
+#
+# Usage:
+#   cicd init [--force]              Install CICD into current repo.
+#   cicd new-repo <name> [--language=py|node|generic] [--owner=<gh-owner>]
+#                                    Scaffold a brand-new repo with CICD.
+#   cicd run [--check=<name>] [--judge=<name>]
+#                                    Run all gates + judges and write JSON + report.
+#   cicd check <name>                Run a single deterministic check.
+#   cicd judge <name>                Run a single LLM judge.
+#   cicd report                      Aggregate .cicd/out into report.md.
+#   cicd cleanup-branches            Prune merged branches, label stale PRs.
+#   cicd revert <sha>                Open a revert PR for a merged commit.
+#   cicd install-agent [--check]     Install the Cursor CLI ('agent' binary).
+#   cicd setup-cursor [--repo o/n]   Programmatically wire CURSOR_API_KEY into
+#                                    a repo + check Cursor GitHub App install.
+#   cicd version                     Print the CICD version.
+
+set -euo pipefail
+
+CICD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export CICD_ROOT
+VERSION_FILE="$CICD_ROOT/VERSION"
+CICD_VERSION=$(cat "$VERSION_FILE" 2>/dev/null || echo "0.0.0")
+
+usage() { sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'; }
+
+cmd="${1:-}"
+[[ $# -gt 0 ]] && shift || true
+
+case "$cmd" in
+    ""|-h|--help|help) usage ;;
+    version|--version) echo "cicd $CICD_VERSION" ;;
+
+    init)
+        exec "$CICD_ROOT/install.sh" "$PWD" "$@"
+        ;;
+
+    new-repo)
+        exec "$CICD_ROOT/lib/new-repo.sh" "$@"
+        ;;
+
+    run)
+        exec "$CICD_ROOT/lib/run.sh" "$@"
+        ;;
+
+    check)
+        name="${1:?check name required}"; shift || true
+        script="$CICD_ROOT/lib/checks/$name.sh"
+        [[ -x "$script" ]] || { echo "no such check: $name" >&2; exit 2; }
+        exec "$script" "$@"
+        ;;
+
+    judge)
+        name="${1:?judge name required}"; shift || true
+        script="$CICD_ROOT/lib/judges/$name.sh"
+        [[ -x "$script" ]] || { echo "no such judge: $name" >&2; exit 2; }
+        exec "$script" "$@"
+        ;;
+
+    report)
+        exec "$CICD_ROOT/lib/report.sh" "$@"
+        ;;
+
+    cleanup-branches)
+        exec "$CICD_ROOT/lib/branch-cleanup.sh" "$@"
+        ;;
+
+    revert)
+        exec "$CICD_ROOT/lib/revert.sh" "$@"
+        ;;
+
+    install-agent)
+        exec "$CICD_ROOT/lib/install-agent.sh" "$@"
+        ;;
+
+    setup-cursor)
+        exec "$CICD_ROOT/lib/setup-cursor.sh" "$@"
+        ;;
+
+    *)
+        echo "unknown subcommand: $cmd" >&2
+        usage
+        exit 2
+        ;;
+esac

@@ -1,0 +1,149 @@
+# CICD — runs gates + judges on every PR, then posts a sticky review comment.
+# This is the *caller* workflow; the heavy lifting lives in cicd/ (vendored).
+
+name: CICD
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
+concurrency:
+  group: cicd-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cicd:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install jq + Python deps
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y jq
+          pip install --disable-pip-version-check pyyaml openai anthropic
+
+      - name: Install Cursor CLI (for LLM judges)
+        # Skip silently when the secret is missing — judges will fall back
+        # to OpenAI or stub. We never block the pipeline on a missing key.
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+        run: |
+          if [[ -z "${CURSOR_API_KEY:-}" ]]; then
+            echo "CURSOR_API_KEY not set; skipping Cursor CLI install"
+            exit 0
+          fi
+          chmod +x cicd/bin/cicd
+          find cicd -name '*.sh' -exec chmod +x {} +
+          ./cicd/bin/cicd install-agent || echo "::warning::Cursor CLI install failed; judges will fall back"
+
+      - name: Derive CICD inputs
+        id: inputs
+        env:
+          # The body in the PR webhook payload is a snapshot at trigger time;
+          # later edits to the PR body would not take effect on a re-run
+          # unless we refetch. Pull the live body via the GitHub API.
+          GH_TOKEN:      ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER:     ${{ github.event.pull_request.number }}
+          PR_BODY_EVENT: ${{ github.event.pull_request.body }}
+          BASE_SHA:      ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA:      ${{ github.event.pull_request.head.sha }}
+          BRANCH:        ${{ github.event.pull_request.head.ref }}
+          BASE_REF:      ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          BODY_FILE="$RUNNER_TEMP/pr-body.txt"
+          # Refetch the live PR body; fall back to the trigger-time body
+          # if the API call fails for any reason.
+          if ! gh pr view "$PR_NUMBER" --json body --jq .body > "$BODY_FILE" 2>/dev/null; then
+            echo "::warning::could not fetch live PR body; using event payload"
+            printf '%s' "${PR_BODY_EVENT:-}" > "$BODY_FILE"
+          fi
+          {
+            echo "pr_body_file=$BODY_FILE"
+            echo "base_sha=$BASE_SHA"
+            echo "head_sha=$HEAD_SHA"
+            echo "branch=$BRANCH"
+            echo "base_ref=origin/$BASE_REF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run CICD
+        id: cicd
+        env:
+          CICD_BASE_SHA: ${{ steps.inputs.outputs.base_sha }}
+          CICD_HEAD_SHA: ${{ steps.inputs.outputs.head_sha }}
+          CICD_BRANCH: ${{ steps.inputs.outputs.branch }}
+          CICD_PR_BODY_FILE: ${{ steps.inputs.outputs.pr_body_file }}
+          CICD_BASE_REF: ${{ steps.inputs.outputs.base_ref }}
+          # LLM backends; whichever is available wins, in this priority:
+          # cursor-agent > anthropic > openai > stub. Override per-repo
+          # via .cicd/config.yaml or CICD_JUDGE_BACKEND.
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CURSOR_API_KEY:    ${{ secrets.CURSOR_API_KEY }}
+          CICD_JUDGE_BACKEND:    ${{ vars.CICD_JUDGE_BACKEND }}
+          CICD_ANTHROPIC_MODEL:  ${{ vars.CICD_ANTHROPIC_MODEL }}
+          CICD_CURSOR_MODEL:     ${{ vars.CICD_CURSOR_MODEL }}
+        run: |
+          set +e
+          chmod +x cicd/bin/cicd cicd/install.sh
+          find cicd -name '*.sh' -exec chmod +x {} +
+          ./cicd/bin/cicd run
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Upload CICD artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cicd-out
+          path: .cicd/out
+          if-no-files-found: ignore
+
+      - name: Post sticky PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: cicd
+          path: .cicd/out/report.md
+
+      - name: Apply labels
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          [[ -f .cicd/out/labels.txt ]] || exit 0
+          # Strip existing cicd/* labels first.
+          existing=$(gh pr view "$PR_NUMBER" --json labels --jq '.labels[].name' || true)
+          while IFS= read -r lbl; do
+            if [[ "$lbl" == cicd/* ]]; then
+              gh pr edit "$PR_NUMBER" --remove-label "$lbl" >/dev/null || true
+            fi
+          done <<< "$existing"
+          while IFS= read -r lbl; do
+            [[ -z "$lbl" ]] && continue
+            gh label create "$lbl" --color ededed 2>/dev/null || true
+            gh pr edit "$PR_NUMBER" --add-label "$lbl" >/dev/null
+          done < .cicd/out/labels.txt
+
+      - name: Fail job if gates failed
+        if: steps.cicd.outputs.exit_code != '0'
+        run: |
+          echo "CICD gates failed — see sticky PR comment."
+          exit 1

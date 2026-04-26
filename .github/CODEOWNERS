@@ -1,0 +1,7 @@
+# Default codeowners — override for your org.
+*       @{{OWNER}}
+
+# Keep CICD itself guarded.
+/cicd/                  @{{OWNER}}
+/.github/workflows/cicd* @{{OWNER}}
+/.cicd/                 @{{OWNER}}
