@@ -1,5 +1,7 @@
 # Plan Orchestrator — Run Plans in Separate Contexts
 
+Repository layout (plans, automation, CICD): see [ARCHITECTURE.md](../../ARCHITECTURE.md).
+
 The script `scripts/run-plans.py` runs each workstream plan in its own Cursor Agent invocation so each plan gets a **new context window**. That keeps context size manageable and enforces one plan per run.
 
 ## Prerequisites

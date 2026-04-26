@@ -1,5 +1,7 @@
 # TLDR Reader — Ultra-Lean Digest
 
+Repo-wide layout and how this automation fits with CICD and GitHub Actions: [ARCHITECTURE.md](../../../ARCHITECTURE.md).
+
 A **Cursor Automation** that runs on a schedule, scans TLDR Tech for high-leverage ideas matching your repos, and creates GitHub issues only when justified.
 
 **Primary path:** Cursor Automations (UI) or Playwright-assisted setup. **Fallback only:** GitHub Actions calling the Cloud Agents API (different tool surface—see caveats).

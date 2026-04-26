@@ -42,6 +42,10 @@ To make `CURSOR_API_KEY` available here:
    ./cicd/bin/cicd setup-cursor --repo <owner>/<repo> --api-key "$CURSOR_API_KEY"
    ```
 
+## TLDR Reader daily workflow (GitHub Actions)
+
+The scheduled workflow `.github/workflows/tldr-reader-daily.yml` resolves the Cloud Agents API key in this order: `secrets.CURSOR_AGENTS_API_KEY`, then `secrets.CURSOR_API_KEY`, then `secrets.CURSOR_CLOUD_AGENTS_API_KEY`. Prefer configuring only `CURSOR_AGENTS_API_KEY` on the repo unless you are migrating secret names.
+
 ## CICD pipeline
 
 This repo dogfoods CICD (`cicd/`). The PR workflow at

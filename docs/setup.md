@@ -2,6 +2,8 @@
 
 This guide covers everything needed to run TLDR Research Ops locally. The system is currently in the planning phase (P1 MVP); this document will be updated as the implementation evolves.
 
+For how this repository is laid out (docs, automation, CICD, workflows), see [ARCHITECTURE.md](../ARCHITECTURE.md) at the repo root.
+
 ## Prerequisites
 
 | Requirement | Version | Notes |
@@ -16,8 +18,8 @@ This guide covers everything needed to run TLDR Research Ops locally. The system
 
 ```powershell
 # 1. Clone the repo
-git clone https://github.com/<your-username>/tldr.git
-cd tldr
+git clone https://github.com/hhalperin/automated-discovery-research-implementation-pipeline.git
+cd automated-discovery-research-implementation-pipeline
 
 # 2. Create and activate virtual environment
 python -m venv .venv
