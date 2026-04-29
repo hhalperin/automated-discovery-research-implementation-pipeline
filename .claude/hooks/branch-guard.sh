@@ -17,7 +17,7 @@ for branch in $PROTECTED; do
 done
 
 # Block force push
-if echo "$COMMAND" | grep -qE "git push.*(--force|-f\b)"; then
+if echo "$COMMAND" | grep -qE "git push.*(--force(\s|$)|-f(\s|$))"; then
   echo "BLOCKED: Force push prohibited. Use --force-with-lease only if absolutely necessary." >&2
   exit 2
 fi
@@ -30,7 +30,7 @@ fi
 
 # Block deletion of protected branches
 for branch in $PROTECTED; do
-  if echo "$COMMAND" | grep -qE "git branch\s+-[dD]\s+${branch}"; then
+  if echo "$COMMAND" | grep -qE "git branch\s+-[dD]\s+${branch}(\s|$)"; then
     echo "BLOCKED: Cannot delete protected branch '${branch}'." >&2
     exit 2
   fi
