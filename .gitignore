@@ -1,3 +1,4 @@
 .env
 .cursor/plan-logs/
 scripts
+.claude/settings.local.json

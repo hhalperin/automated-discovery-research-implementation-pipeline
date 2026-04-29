@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Write(./.env)",
+      "Write(./.env.*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f *)",
+      "Bash(git reset --hard*)",
+      "Bash(git checkout main)",
+      "Bash(git push origin main*)",
+      "Bash(rm -rf .git*)"
+    ],
+    "allow": [
+      "Bash(uv run *)",
+      "Bash(uv pip *)",
+      "Bash(uv sync)",
+      "Bash(uv venv)",
+      "Bash(ruff check *)",
+      "Bash(ruff format *)",
+      "Bash(mypy *)",
+      "Bash(pytest *)",
+      "Bash(python -m pytest *)",
+      "Bash(pwsh -File scripts/*)",
+      "Bash(powershell -File scripts/*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/branch-guard.sh" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "python -c \"import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))\" 2>/dev/null | grep -E '\\.py$' | xargs -I{} ruff format {} 2>/dev/null || true" }
+        ]
+      }
+    ]
+  },
+  "respectGitignore": true,
+  "enableAllProjectMcpServers": false
+}
